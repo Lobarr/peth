@@ -1,5 +1,7 @@
 # Peth
 
+Simple ethereum implemenation for Blockchain course Final Project
+
 ### Guide
 * Make sure to have python 3 installed
 * Create a virtual environment by running `python3 -m  venv venv`
