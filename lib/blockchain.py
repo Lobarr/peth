@@ -263,19 +263,13 @@ class Blockchain:
 
   def check(self):
       for number in reversed(range(len(self.chain))):
-          block = self.chain[number]
-
-          if not block['hash'] == self.hash_block_header(block):
-              return 'invalid block hash for block ' + str(number)
-
-          if (
-            number > 0 and 
-            block['header']['parent_hash'] != self.chain[number - 1]['hash']
-          ):
-              return 'invalid block pointer from block ' + str(number) + ' back to block ' + str(number - 1)
-
-          if not self.check_transactions_root(block):
-              return 'invalid merkle root for block ' + str(number)##
+        block = self.chain[number]
+        if (
+          (number > 0 and block['header']['parent_hash'] != self.chain[number-1]['hash'])
+          or block['hash'] != self.hash_block_header(block)
+          or self.check_transactions_root(block) == False
+        ):
+          False
       return True
 
   def get_wallet_summaries(self): 
