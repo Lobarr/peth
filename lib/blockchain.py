@@ -103,6 +103,14 @@ class Blockchain:
       self.mempool[transaction_id] = transaction
       return True
   
+  def verify_transaction_sender(self, private_key: str, transaction: Transaction) -> bool:
+    wallet = self.get_wallet_by_private_key(private_key)
+    if (
+      not wallet
+      or wallet.get_address() != transaction.get_sender()
+    ):
+      return False
+    return True
 
   def update_wallets(self, *wallets):
     for wallet in wallets:
@@ -282,4 +290,10 @@ class Blockchain:
       return True
 
   def get_wallet_summaries(self): 
-    return [self.wallets[wallet_key].get_summary() for wallet_key in self.wallets.keys()]
+    summaries = []
+    for wallet_address in self.wallets.keys():
+      wallet = self.get_wallet_by_address(wallet_address)
+      associated_account = self.get_account(wallet.get_address())
+      wallet_summary = wallet.get_summary(associated_account)
+      summaries.append(wallet_summary)
+    return summaries

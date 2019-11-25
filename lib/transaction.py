@@ -24,6 +24,9 @@ class Transaction:
     self.sender = sender
     self.signature: str = signature
 
+  def set_nonce(self, nonce: int):
+    self.nonce = nonce
+    
   def get_sender(self) -> str:
     return self.sender
 
