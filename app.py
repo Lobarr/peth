@@ -10,16 +10,25 @@ from mpt import MerklePatriciaTrie
 
 app = Flask(__name__)
 
-@app.route('/create_wallet', methods = ['GET'])
+@app.route('/create_wallet', methods=['GET'])
 def create_wallet():
     try:
-      #! collect address and verify account exists
+      address = request.args.get('address')
+      if not address:
+        return jsonify({
+          'error': 'address not provided'
+        }), 400
       return jsonify({
-        'data': blockchain.create_wallet()
+        'data': blockchain.create_wallet(address)
       }), 200
     except Exception as err:
       return jsonify({'error': err.args[0]})
 
+@app.route('/create_account', methods=['GET'])
+def create_account():
+  return jsonify({
+    'data': blockchain.create_account(request.args.get('code'))
+  }), 200
 
 @app.route('/show_mempool', methods = ['GET'])
 def show_mempool():

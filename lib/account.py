@@ -5,7 +5,7 @@ from .transaction import Transaction
 DEFAULT_BALANCE = 10.0
 class Account:
 
-  def __init__(self, address: str = None, balance: float = DEFAULT_BALANCE, contract_code: str = None, contract_hash: str = None, state: dict = {}):
+  def __init__(self, address: str = Helper.generate_address(), balance: float = DEFAULT_BALANCE, contract_code: str = None, contract_hash: str = None, state: dict = {}):
     self.address: str = address
     self.balance: float = balance
     self.contract_code: str = contract_code

@@ -30,23 +30,31 @@ class Blockchain:
       # add new wallet to self.wallets 
       # return the wallet to caller
       account = self.get_account(address)
-      if account != None:
-        raise Exception('Account has owner')
+      if account == None:
+        raise Exception('account does not exist')
+
+      if self.get_wallet_by_address(address) != None:
+        raise Exception('account has owner')
+      
       new_wallet = Wallet(address=address)
-      self.wallets[new_wallet.get_public_key()] = new_wallet
+      self.wallets[new_wallet.get_address()] = new_wallet
       return new_wallet.get_data()
 
+  def create_account(self, code: str = None):
+    account = Account()
+    code != None and account.set_contract_code(code)
+    self.accounts[account.get_address()] = account
+    return account.get_body()
+ 
   def get_wallet_by_private_key(self, private_key: str) -> Wallet:
-    wallets = self.wallets.keys()
-    for wallet in wallets:
-      if wallets[wallet].get_private_key() == private_key:
+    for _, wallet in self.wallets:
+      if wallet.get_private_key() == private_key:
         return wallet
     return None
 
   def get_wallet_by_public_key(self, public_key: str) -> Wallet:
-    wallets = self.wallets.keys()
-    for wallet in wallets:
-      if wallets[wallet].get_public_key() == public_key:
+    for _, wallet in self.wallets:
+      if wallet.get_public_key() == public_key:
         return wallet
     return None
       
@@ -133,6 +141,7 @@ class Blockchain:
         gas = recipient_account.calc_gas()
         sender_account.charge_gas(gas) and recipient_account.exec_contract(chosen_transaction)
       else:
+        #! handle either sending data / sending funds
         if sender_account.withdraw(chosen_transaction.get_amount()): # attempt to spend
           recipient_account.deposit(chosen_transaction.get_amount())
           self.update_wallets(sender_account, recipient_account)
