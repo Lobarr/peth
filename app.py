@@ -5,8 +5,8 @@ Nicolas Bermeo (100625305)
 
 from random import randrange
 from flask import Flask, jsonify, request, json, Response
-
 from lib import Blockchain, Transaction, Crypto
+from mpt import MerklePatriciaTrie
 
 app = Flask(__name__)
 
@@ -82,7 +82,5 @@ def show_balances():
 
 
 blockchain = Blockchain()
-# app.run(host = '0.0.0.0', port = 8080, debug=1)
+app.run(host = '0.0.0.0', port = 8080, debug=1)
 
-
-print(Crypto.generate_key_pair())

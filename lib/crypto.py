@@ -7,7 +7,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.kdf import x963kdf
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from .bytes import Bytes
+from lib.helper import Helper
 
 class Crypto:
   @staticmethod
@@ -44,7 +44,7 @@ class Crypto:
       password=None,
       backend=default_backend()
     )
-    data_bytes = Bytes.object_to_bytes(data)
+    data_bytes = Helper.object_to_bytes(data)
     signature = private_key_bytes.sign(data_bytes, ec.ECDSA(hashes.SHA256()))
     return signature.hex()
 
@@ -62,7 +62,7 @@ class Crypto:
         backend=default_backend()
       )
       signature_bytes = bytes.fromhex(signature)
-      data_bytes = Bytes.object_to_bytes(data)
+      data_bytes = Helper.object_to_bytes(data)
       public_key_bytes.verify(signature_bytes, data_bytes, ec.ECDSA(hashes.SHA256()))
       return True
     except InvalidSignature:

@@ -1,30 +1,34 @@
 import time
 from typing import Any
-from .helper import Helper
+from lib.helper import Helper
+from lib.crypto import Crypto
 
 class Transaction:
-
   def __init__(
     self, 
     amount: float = None, 
     data: Any = None,
-    gas_limit: int = None, 
+    gas_limit: float = None, 
     gas_price: float = None, 
     nonce: int = None,
     recipient: str = None, 
     sender: str = None, 
-    signature: str = None, 
-    start_gas: float = None
+    signature: str = None,
   ):
     self.amount: float = amount
     self.data: Any = data
-    self.gas_limit: int = gas_limit
+    self.gas_limit: float = gas_limit
     self.gas_price: float = gas_price
     self.nonce: int = nonce
     self.recipient: str = recipient
     self.sender = sender
     self.signature: str = signature
-    self.start_gas: float = start_gas
+
+  def get_sender(self) -> str:
+    return self.sender
+
+  def set_sender(self, sender: str):
+    self.sender = sender
 
   def get_signature(self) -> str:
     return self.signature
@@ -50,41 +54,58 @@ class Transaction:
   def get_gas_price(self) -> float:
     return self.gas_price
 
-  def set_start_gas(self, start_gas: float):
-    self.start_gas = start_gas
-
-  def get_start_gas(self) -> float:
-    return self.start_gas
-  
   def set_data(self, data: Any):
     self.data = data
 
   def get_data(self) -> Any:
     return self.data
 
-  def _get_data_bytes(self) -> bytes:
-    return repr({
+  def set_gas_limit(self, gas_limit):
+    self.gas_limit = gas_limit
+
+  def get_gas_limit(self) -> float:
+    return self.gas_limit
+
+  def get_nonce(self) -> int:
+    return self.nonce
+
+  def get_body(self) -> bytes:
+    return self.__dict__
+
+  def get_transaction_data(self) -> dict:
+    return {
       'amount': self.get_amount(),
       'data': self.get_data(),
+      'gas_limit': self.get_gas_limit(),
       'gas_price': self.get_gas_price(),
+      'nonce': self.get_nonce(),
       'recipient': self.get_recipient(),
-      'signature': self.get_signature(),
-      'start_gas': self.get_start_gas(),
-    }).encode('utf-8')
+      'sender': self.get_sender()
+    }
 
   def sign_transaction(self, private_key: str):
-    pass
+    context = self.get_transaction_data()
+    signature =  Crypto.sign(context, private_key)
+    self.set_signature(signature)
 
-  def get_body(self) -> dict:
-    return self.__dict__
+  def verify_signature(self, public_key: str) -> bool:
+    context = self.get_transaction_data()
+    return Crypto.verify(context, self.get_signature(), public_key)
+
+  def hash_transaction(self) -> str:
+    context = self.get_transaction_data()
+    context.update({'signature': self.get_signature()})
+    return Helper.hash_data(Helper.object_to_bytes(context))
 
   @staticmethod
   def make_transaction(transaction_data: dict):
     return Transaction(
       amount=transaction_data['amount'],
-      gas_price=transaction_data['gas_price'],
       data=transaction_data['data'],
+      gas_limit=transaction_data['gas_limit'],
+      gas_price=transaction_data['gas_price'],
+      nonce=transaction_data['nonce'],
       recipient=transaction_data['recipient'],
+      sender=transaction_data['sender'],
       signature=transaction_data['signature'],
-      start_gas=transaction_data['start_gas']
     )
