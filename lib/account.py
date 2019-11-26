@@ -1,18 +1,22 @@
+import dis
 from copy import deepcopy
+from io import StringIO
+
 from .helper import Helper
-from .transaction import Transaction
 from .message import Message
+from .transaction import Transaction
 
 DEFAULT_BALANCE = 10.0
 class Account:
 
-  def __init__(self, address: str = None, nonce: int = None, balance: float = DEFAULT_BALANCE, contract_code: str = None, state: dict = None):
+  def __init__(self, address: str = "", nonce: int = 0, balance: float = DEFAULT_BALANCE, contract_code: str = "", state: dict = {}):
     self.address: str = address
     self.nonce: int = nonce
     self.balance: float = balance
-    self.contract_code: str = contract_code
+    self.contract_code: str = self.set_contract_code(contract_code)
     self.contract_hash: str = None
     self.state_root: dict = state
+    self.funcs = {}
 
   def set_address(self, address: str):
     self.address = address
@@ -32,9 +36,21 @@ class Account:
   def get_balance(self) -> float:
     return self.balance
 
-  def set_contract_code(self, contract_code: str):
-    self.contract_code = contract_code
-    self.contract_hash = Helper.hash_data(contract_code.encode('utf-8'))
+  def set_contract_code(self, contract_code: str) -> bool:
+    # Compiled(co) contract code 
+    # Will only be set it there passes all validation
+    # Returns true if set otherwise false
+
+    # Security check to ensure code is clean
+    security_clearance: bool = True if self.is_contract_clean(contract_code) else False
+
+    self.contract_code = contract_code if security_clearance == True else ""
+    self.contract_hash = Helper.hash_data(self.contract_code.encode('utf-8'))
+
+    if security_clearance:
+      self.generateFunctions(self.contract_code)
+
+    return security_clearance
 
   def get_contract_code(self) -> str:
     return self.contract_code
@@ -94,5 +110,26 @@ class Account:
       contract_code=account_data['contract_code'],
       state=account_data['state']
     )
+  
+  def is_contract_clean(self, contract_code: str) -> bool:
+    # Compile and disassemble the contract code
+    co_contract_code = compile(contract_code, self.get_address(), 'exec')
+    dis.dis(co_contract_code, file=open('temp_disassemble', 'w'))
+    
+    disassembly = open('temp_disassemble', 'r').read().split()
 
+    # Blacklisted codes
+    blacklist = ['IMPORT_NAME', '(exec)', '(eval)', '(compile)']
 
+    # Return false if there are any blacklisted options
+    if any(check in disassembly for check in blacklist):
+      return False
+    
+    return True
+  
+  def generateFunctions(self, contract_code: str) -> list:
+    co_contract_code = compile(contract_code, 'temp_compile', 'exec')
+    # Extracts the functions by checking their type after compilation
+    # functions will have code object type instead of a string
+    _extracted_funcs = [constant for constant in co_contract_code.co_consts if type(constant) == type(compile('', '', 'exec'))]
+    self.funcs = {str(func.co_name): func for func in _extracted_funcs}
