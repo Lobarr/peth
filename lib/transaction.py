@@ -10,7 +10,7 @@ class Transaction:
     data: Any = None,
     gas_limit: float = None, 
     gas_price: float = None, 
-    nonce: int = None,
+    nonce: int = 0,
     recipient: str = None, 
     sender: str = None, 
     signature: str = None,

@@ -23,12 +23,12 @@ class Crypto:
       encoding=serialization.Encoding.PEM,
       format=serialization.PrivateFormat.TraditionalOpenSSL,
       encryption_algorithm=serialization.NoEncryption()
-    ).decode('utf-8')
+    ).hex()
     public_key = private_key.public_key()
     serialized_public_key = public_key.public_bytes(
       encoding=serialization.Encoding.PEM,
       format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
+    ).hex()
 
     return (serialized_private_key, serialized_public_key)
 
@@ -40,7 +40,7 @@ class Crypto:
     @param private_key: (str) private key to sign with
     """
     private_key_bytes = serialization.load_pem_private_key(
-      private_key.encode('utf-8'),
+      bytes.fromhex(private_key),
       password=None,
       backend=default_backend()
     )

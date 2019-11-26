@@ -47,13 +47,15 @@ class Blockchain:
     return account.get_body()
  
   def get_wallet_by_private_key(self, private_key: str) -> Wallet:
-    for _, wallet in self.wallets:
+    for wallet_address in self.wallets.keys():
+      wallet = self.wallets[wallet_address]
       if wallet.get_private_key() == private_key:
         return wallet
     return None
 
   def get_wallet_by_public_key(self, public_key: str) -> Wallet:
-    for _, wallet in self.wallets:
+    for wallet_address in self.wallets.keys():
+      wallet = self.wallets[wallet_address]
       if wallet.get_public_key() == public_key:
         return wallet
     return None
@@ -96,8 +98,8 @@ class Blockchain:
         transaction.hash_transaction() != transaction_id 
         or transaction_id in self.mempool
         or sender_wallet == None
-        or transaction.verify_signature(sender_wallet.get_public_key()) == False
-        or sender_prev_transaction.get_nonce() >= transaction.get_nonce()
+        or transaction.verify_signature(sender_wallet.get_public_key()) == False 
+        or (sender_prev_transaction and sender_prev_transaction.get_nonce() >= transaction.get_nonce())
       ):
         return False
       self.mempool[transaction_id] = transaction
