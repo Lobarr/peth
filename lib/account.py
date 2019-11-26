@@ -2,7 +2,6 @@ import dis
 from copy import deepcopy
 
 from .helper import Helper
-from .message import Message
 from .transaction import Transaction
 
 DEFAULT_BALANCE = 10.0
