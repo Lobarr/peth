@@ -50,7 +50,7 @@ def create_transaction():
       'private_key': request.args.get('private_key', type=str)
     }
     transaction = blockchain.create_transaction(transaction_data)
-    return jsonify({'transaction_hash': transaction.get_hash()}), 200
+    return jsonify({'data': {'transaction_hash': transaction.get_hash()}}), 200
   except Exception as err:
     return jsonify({'error': err.args[0]}), 400
 
@@ -85,6 +85,14 @@ def get_account():
   if account == None:
     return jsonify({'error': 'Invalid address provided'})
   return jsonify({'data': account.get_body()})
+
+@app.route('/get_accounts', methods = ['GET'])
+def get_accounts():
+  if blockchain.get_accounts() == None:
+    return jsonify({'error': 'No accounts available'})
+
+  accounts = {address: account.get_body() for address, account in blockchain.get_accounts().items()}
+  return jsonify({'data': accounts})  
 
 @app.route('/show_balances', methods = ["GET"])
 def show_balances():
