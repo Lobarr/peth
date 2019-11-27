@@ -16,10 +16,10 @@ from lib.wallet import Wallet
 # constants
 BLOCK_SIZE = 10
 NONCE_SIZE = 8
+GAS_PRICE = 0.001
 
 class Blockchain:
   DEFAULT_TARGET: int = 4
-  GAS_PRICE: int = 5
   def __init__(self):
       self.chain: List[dict] = []
       self.difficulty_target: int = Blockchain.DEFAULT_TARGET
@@ -171,13 +171,16 @@ class Blockchain:
   def choose_transactions_from_mempool(self) -> List[Transaction]:
     chosen_transactions = []
     transaction_bucket = [self.mempool[transaction_id] for transaction_id in self.mempool.keys()]
+    total_gas_used:float = 0.0
+    total_gas_limit: float = 0.0
 
     while len(chosen_transactions) != BLOCK_SIZE:
       if not transaction_bucket:
         break
-
-      chosen_transaction = self.choose_random_transaction(transaction_bucket)
+      
+      chosen_transaction: Transaction = self.choose_random_transaction(transaction_bucket)
       sender_account, recipient_account = self.get_transaction_accounts(chosen_transaction)
+
       if recipient_account.is_contract():
         # Retrieve the function name from the data
         func_name = chosen_transaction.get_data()['func_name']
@@ -189,9 +192,14 @@ class Blockchain:
           charged_gas = sender_account.charge_gas(chosen_transaction.get_gas_limit(), func_name, func_args)
           # Check if it charged the gas
           if charged_gas:
+            # Calculate the gas cost
+            gas_cost = sender_account.calc_gas(func_name)
             # Remove from the balance if it charged the gas and update
-            sender_account.set_balance = sender_account.balance - sender_account.calc_gas(func_name)
+            sender_account.set_balance = sender_account.balance - gas_cost
             self.update_accounts(sender_account)
+            # Add to the toal gas_used
+            total_gas_used += gas_cost
+            total_gas_limit += chosen_transaction.get_gas_limit()
 
         chosen_transactions.append(chosen_transaction)
       else:
@@ -203,7 +211,7 @@ class Blockchain:
       del self.mempool[chosen_transaction.get_hash()]
       transaction_bucket.remove(chosen_transaction)
     
-    return chosen_transactions
+    return (chosen_transactions, total_gas_used)
 
   def get_accounts(self) -> Dict[str, Account]:
     return self.accounts
@@ -261,8 +269,8 @@ class Blockchain:
               'number': len(self.chain),
               'timestamp': str(time.time()),
               'difficulty': self.difficulty_target,
-              'gas_limit': None,
-              'gas_used': None,
+              'gas_limit': 0.0,
+              'gas_used': 0.0,
               'parent_hash': self.get_last_block_hash(),
               'states_root_hash': None,
               'transactions_root_hash': None,
@@ -275,7 +283,8 @@ class Blockchain:
   def mine_block(self, data = None):
     #! update block gas_limit and gas_used values
     block = self.create_block(data)
-    transactions = self.choose_transactions_from_mempool()
+    transactions, gas_used = self.choose_transactions_from_mempool()
+    block['header']['gas_used'] = gas_used
     
     if len(transactions) > 0:
       account_addresses = set([])
