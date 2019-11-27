@@ -1,6 +1,10 @@
+import binascii
 import hashlib
 import json
+import os
 from uuid import uuid4
+
+GAS_PRICE = 0.001
 
 class Helper:
   @staticmethod
@@ -11,7 +15,7 @@ class Helper:
 
   @staticmethod
   def generate_address() -> str:
-    return uuid4().hex
+    return binascii.hexlify(os.urandom(16)).decode()
 
   @staticmethod
   def object_to_bytes(obj: dict) -> bytes:

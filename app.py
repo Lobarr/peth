@@ -50,7 +50,7 @@ def create_transaction():
       'private_key': request.args.get('private_key', type=str)
     }
     transaction = blockchain.create_transaction(transaction_data)
-    return jsonify({'transaction_hash': transaction.get_hash()}), 200
+    return jsonify({'data': {'transaction_hash': transaction.get_hash()}}), 200
   except Exception as err:
     return jsonify({'error': err.args[0]}), 400
 

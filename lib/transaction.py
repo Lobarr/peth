@@ -1,6 +1,6 @@
 import time
 from typing import Any
-from lib.helper import Helper
+from lib.helper import Helper, GAS_PRICE
 from lib.crypto import Crypto
 
 class Transaction:
@@ -9,7 +9,7 @@ class Transaction:
     amount: float = None,
     data: Any = None,
     gas_limit: float = None,
-    gas_price: float = None,
+    gas_price: float = GAS_PRICE,
     nonce: int = 0,
     recipient: str = None,
     sender: str = None,
