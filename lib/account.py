@@ -53,9 +53,8 @@ class Account:
     self.contract_code = code if security_clearance == True else ""
     if security_clearance:
       self.contract_hash = Helper.hash_data(self.contract_code.encode())
-
-    if security_clearance:
       self.generateFunctions(self.contract_code)
+ 
     print(security_clearance)
     return security_clearance
 
