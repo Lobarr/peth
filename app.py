@@ -44,6 +44,23 @@ def create_transaction():
       'recipient': request.args.get('recipient', type=str),
       'private_key': request.args.get('private_key', type=str)
     }
+    # Check the data field for correct function name and parameters
+    data = json.loads(transaction_data['data'])
+    if transaction_data['data'] != None:
+      if 'func_name' in data or 'func_args' in data:
+        func_name = data['func_name']
+        func_args = data['func_args']
+        contract_account = blockchain.get_account(transaction_data['recipient'])
+        # Perform Checks
+        if contract_account.is_contract() == False:
+          raise Exception('Recipient is not a contract account')
+          
+        if func_name not in contract_account.funcs.keys():
+          raise Exception('Function call does not exist for the contract')
+          
+        if len(func_args) != len(contract_account.funcs_args[func_name]):
+          raise Exception('Wrong amount of function arugments')
+
     transaction = blockchain.create_transaction(transaction_data)
     return jsonify({'data': {'transaction_hash': transaction.get_hash()}}), 200
   except Exception as err:
