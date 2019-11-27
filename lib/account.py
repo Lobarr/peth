@@ -8,14 +8,15 @@ from .helper import Helper
 from .transaction import Transaction
 
 DEFAULT_BALANCE = 10.0
-GAS_PRICE = 1/1000
+GAS_PRICE = 0.001
 
 class Account:
 
   def __init__(self, address: str = '', balance: float = DEFAULT_BALANCE, contract_code: str = "", contract_hash: str = None, state: dict = {}):
     self.address: str = address if address else Helper.generate_address()
     self.balance: float = balance
-    self.contract_code: str = contract_code
+    self.contract_code = contract_code
+
     self.contract_hash: str = contract_hash
     self.state: dict = state
 
@@ -93,7 +94,8 @@ class Account:
       num_of_instructions = len(disassemble.split('\n'))
 
       # Gas is equal to the number of instructions that need to be executed
-      return num_of_instructions * GAS_PRICE
+      gas_cost = float(num_of_instructions) * GAS_PRICE
+      return float(gas_cost)
 
     return 0
 
@@ -226,9 +228,15 @@ class Account:
     # Initializes the contract with the functions
     injected_context = {
         'state': {},
-        'data': {}
+        'data': {},
+        'msg': {
+          'sender': self.get_address(),
+	      }
     }
     exec(co_contract_code, injected_context)
+
+    # Set the initial state
+    self.set_state(injected_context['state'])
 
     # The functions themselves can be extracted from the injected_context
     _extracted_funcs = [constant for constant in co_contract_code.co_consts if type(constant) == type(compile('', '', 'exec'))]
