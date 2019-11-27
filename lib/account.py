@@ -12,7 +12,7 @@ GAS_PRICE = 1/1000
 
 class Account:
 
-  def __init__(self, address: str = Helper.generate_address(), balance: float = DEFAULT_BALANCE, contract_code: str = None, contract_hash: str = None, state: dict = {}):
+  def __init__(self, address: str = Helper.generate_address(), balance: float = DEFAULT_BALANCE, contract_code: str = "", contract_hash: str = None, state: dict = {}):
     self.address: str = address
     self.balance: float = balance
     self.contract_code: str = contract_code
@@ -46,17 +46,15 @@ class Account:
     # Returns true if set otherwise false
 
     # Decode the contract code 
-    code = str(base64.urlsafe_b64decode(contract_code).decode())
-    # Security check to ensure code is clean    
-    security_clearance: bool = True if self.is_contract_clean(code) else False
+    code = base64.urlsafe_b64decode(contract_code).decode('utf-8')
+    security_clearance = self.is_contract_clean()
+    if not security_clearance:
+      return False
 
-    self.contract_code = code if security_clearance == True else ""
-    if security_clearance:
-      self.contract_hash = Helper.hash_data(self.contract_code.encode())
+    self.contract_code = code
+    self.contract_hash = Helper.hash_data(self.get_contract_code().encode('utf-8'))
+    self.generate_functions(self.contract_code)
 
-    if security_clearance:
-      self.generateFunctions(self.contract_code)
-    print(security_clearance)
     return security_clearance
 
   def get_contract_code(self) -> str:
@@ -193,7 +191,7 @@ class Account:
       '(charge_gas)',
       '(deposit)',
       '(exec_contract)',
-      '(generateFunctions)',
+      '(generate_functions)',
       '(get_address)',
       '(get_balance)',
       '(get_body)',
@@ -221,7 +219,7 @@ class Account:
 
     return True
   
-  def generateFunctions(self, contract_code: str) -> bool:
+  def generate_functions(self, contract_code: str) -> bool:
     co_contract_code = compile(contract_code, 'temp_compile', 'exec')
     # Extracts the functions by checking their type after compilation
     # functions will have code object type instead of a string
