@@ -58,7 +58,7 @@ class Crypto:
     """
     try:
       public_key_bytes = serialization.load_pem_public_key(
-        public_key.encode('utf-8'),
+        bytes.fromhex(public_key),
         backend=default_backend()
       )
       signature_bytes = bytes.fromhex(signature)

@@ -5,15 +5,16 @@ from lib.crypto import Crypto
 
 class Transaction:
   def __init__(
-    self, 
-    amount: float = None, 
+    self,
+    amount: float = None,
     data: Any = None,
-    gas_limit: float = None, 
-    gas_price: float = None, 
+    gas_limit: float = None,
+    gas_price: float = None,
     nonce: int = 0,
-    recipient: str = None, 
-    sender: str = None, 
+    recipient: str = None,
+    sender: str = None,
     signature: str = None,
+    hash: str = None
   ):
     self.amount: float = amount
     self.data: Any = data
@@ -23,6 +24,7 @@ class Transaction:
     self.recipient: str = recipient
     self.sender = sender
     self.signature: str = signature
+    self.hash: str = None
 
   def set_nonce(self, nonce: int):
     self.nonce = nonce
@@ -75,20 +77,27 @@ class Transaction:
   def get_body(self) -> bytes:
     return self.__dict__
 
+  def set_hash(self, _hash: str):
+    self.hash = _hash
+
+  def get_hash(self) -> str: 
+    return self.hash
+  
   def get_transaction_data(self) -> dict:
     return {
       'amount': self.get_amount(),
       'data': self.get_data(),
       'gas_limit': self.get_gas_limit(),
       'gas_price': self.get_gas_price(),
+      'hash': self.get_hash(),
       'nonce': self.get_nonce(),
       'recipient': self.get_recipient(),
-      'sender': self.get_sender()
+      'sender': self.get_sender(),
     }
 
   def sign_transaction(self, private_key: str):
     context = self.get_transaction_data()
-    signature =  Crypto.sign(context, private_key)
+    signature = Crypto.sign(context, private_key)
     self.set_signature(signature)
 
   def verify_signature(self, public_key: str) -> bool:
@@ -107,6 +116,7 @@ class Transaction:
       data=transaction_data['data'],
       gas_limit=transaction_data['gas_limit'],
       gas_price=transaction_data['gas_price'],
+      hash=transaction_data['hash'],
       nonce=transaction_data['nonce'],
       recipient=transaction_data['recipient'],
       sender=transaction_data['sender'],

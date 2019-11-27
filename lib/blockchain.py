@@ -1,6 +1,7 @@
 import time
 import binascii
 import os
+import json
 from typing import List, Dict
 from random import randrange
 from mpt import MerklePatriciaTrie
@@ -45,6 +46,29 @@ class Blockchain:
     code != None and account.set_contract_code(code)
     self.accounts[account.get_address()] = account
     return account.get_body()
+
+  def create_transaction(self, transaction_data: dict) -> Transaction:
+    data = json.loads(transaction_data['data']) if transaction_data['data'] != None else None
+    transaction = Transaction(
+      amount=transaction_data['amount'],
+      data=data,
+      gas_limit=transaction_data['gas_limit'],
+      sender=transaction_data['sender'],
+      recipient=transaction_data['recipient']
+    )
+    sender_prev_transaction = self.get_account_last_transaction(transaction.get_sender())
+    sender_prev_transaction and transaction.set_nonce(sender_prev_transaction.get_nonce() + 1)
+    transaction_hash = transaction.hash_transaction()
+    transaction.set_hash(transaction_hash)
+    transaction.sign_transaction(transaction_data['private_key'])
+
+    if (
+      not self.verify_transaction_sender(transaction_data['private_key'], transaction)
+      or not self.add_transaction_to_mempool(transaction_hash, transaction)
+    ):
+      raise Exception('Invalid transaction')
+    return transaction
+
  
   def get_wallet_by_private_key(self, private_key: str) -> Wallet:
     for wallet_address in self.wallets.keys():
@@ -69,6 +93,10 @@ class Blockchain:
     for i in range(len(self.chain)-1, 0, -1):
       block = self.chain[i]
       states = block['states']
+
+      if states == None:
+        continue
+
       storage = {}
       patricia_tree = MerklePatriciaTrie(storage, bytes.fromhex(states))
       try:
@@ -84,6 +112,9 @@ class Blockchain:
     for i in range(len(self.chain)-1, 0, -1):
       block = self.chain[i]
       transactions = block['transactions']
+      if transactions == None:
+        continue
+      
       for _, transaction_data in transactions:
         transaction = Transaction.make_transaction(transaction_data)
         if transaction.get_sender() == address:
@@ -91,11 +122,10 @@ class Blockchain:
     return None
 
   def add_transaction_to_mempool(self, transaction_id: str, transaction: Transaction) -> bool:
-      #!! validate transaction
       sender_wallet = self.get_wallet_by_address(transaction.get_sender())
       sender_prev_transaction = self.get_account_last_transaction(transaction.get_sender())
       if (
-        transaction.hash_transaction() != transaction_id 
+        transaction.get_hash() != transaction_id 
         or transaction_id in self.mempool
         or sender_wallet == None
         or transaction.verify_signature(sender_wallet.get_public_key()) == False 
@@ -114,10 +144,9 @@ class Blockchain:
       return False
     return True
 
-  def update_wallets(self, *wallets):
-    for wallet in wallets:
-      self.wallets[wallet.get_public_key()] = wallet
-
+  def update_accounts(self, *accounts):
+    for account in accounts:
+      self.accounts[account.get_address()] = account
 
   def get_transaction_wallets(self, transaction: Transaction) -> tuple:
     sender_account = self.wallets[transaction.get_from_address()]
@@ -134,7 +163,7 @@ class Blockchain:
 
 
   def get_mempool_as_list(self):
-    return [self.mempool[transaction_key].get_data() for transaction_key in self.mempool.keys()]
+    return [self.mempool[transaction_key].get_body() for transaction_key in self.mempool.keys()]
 
 
   def choose_transactions_from_mempool(self) -> List[Transaction]:
@@ -154,7 +183,7 @@ class Blockchain:
         #! handle either sending data / sending funds
         if sender_account.withdraw(chosen_transaction.get_amount()): # attempt to spend
           recipient_account.deposit(chosen_transaction.get_amount())
-          self.update_wallets(sender_account, recipient_account)
+          self.update_accounts(sender_account, recipient_account)
           chosen_transactions.append(chosen_transaction)
       
       del self.mempool[chosen_transaction.get_hash()]
@@ -177,8 +206,7 @@ class Blockchain:
     combined_hash = first_transaction.get_hash().encode('utf-8') + second_transaction.get_hash().encode('utf-8')
     return Helper.hash_data(combined_hash)
 
-
-  def calculate_transactions_root(self, transactions: list):
+  def calculate_transactions_root(self, transactions: List[Transaction]):
       # calculate the merkle root
       # return the merkle root (hash)
       cur_tree_level = transactions # starts at bottom of the tree (leaf nodes - transactions)
@@ -201,7 +229,6 @@ class Blockchain:
         return cur_tree_level[0].get_hash() # merkle root hash
       return None
 
-
   def check_transactions_root(self, block: dict):
     # check merkle root
     # return OK or BAD
@@ -210,9 +237,7 @@ class Blockchain:
       transaction_data = block['transactions'][transaction_id]
       transaction = Transaction.make_transaction(transaction_data)
       transactions.append(transaction)
-
     return True if self.calculate_transactions_root(transactions) == block['header']['transactions_root'] else False
-
 
   def create_block(self, data = None):
       block = {
@@ -229,33 +254,41 @@ class Blockchain:
               'transactions_root_hash': None,
           },
           'states': None,
-          'transactions': None,
+          'transactions': {},
       }
       return block
 
   def mine_block(self, data = None):
-      block = self.create_block(data)
-      transactions = self.choose_transactions_from_mempool()
+    #! update block gas_limit and gas_used values
+    block = self.create_block(data)
+    transactions = self.choose_transactions_from_mempool()
+    
+    if len(transactions) > 0:
+      account_addresses = set([])
+      for transaction in transactions:
+        block['transactions'][transaction.get_hash()] = transaction.get_body()
+        account_addresses.add(transaction.get_sender())
+        account_addresses.add(transaction.get_recipient())
+      block['header']['transactions_root_hash'] = self.calculate_transactions_root(transactions)
       
-      if transactions:
-        for transaction in transactions:
-          block['transactions'][transaction.hash_transaction()] = transaction.get_body()
-        block['header']['transactions_root_hash'] = self.calculate_transactions_root()
-
-      if self.get_accounts():
-        states_root, states_root_hash = self.get_patricia_root(self.get_accounts())
+      accounts = []
+      for account_address in account_addresses:
+        accounts.append(self.get_account(account_address))
+      
+      if accounts:
+        states_root, states_root_hash = self.get_patricia_root(accounts)
         block['states'] = states_root
-        block['states']['states_root_hash'] = states_root_hash
+        block['header']['states_root_hash'] = states_root_hash
 
-      while True:
-          block['header']['nonce'] = binascii.b2a_hex(os.urandom(NONCE_SIZE)).decode('utf-8')
-          block['hash'] = self.hash_block_header(block)
+    while True:
+        block['header']['nonce'] = binascii.b2a_hex(os.urandom(NONCE_SIZE)).decode('utf-8')
+        block['hash'] = self.hash_block_header(block)
 
-          if block['hash'][:self.difficulty_target] == ('0' * self.difficulty_target):
-              break
+        if block['hash'][:self.difficulty_target] == ('0' * self.difficulty_target):
+            break
 
-      self.chain.append(block)
-      return block
+    self.chain.append(block)
+    return block
 
   def get_patricia_root(self, accounts: List[Account]) -> tuple:
     storage = {}

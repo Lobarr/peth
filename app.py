@@ -40,35 +40,19 @@ def show_mempool():
 
 @app.route('/create_transaction', methods = ['GET'])
 def create_transaction():
-  transaction = Transaction()
-  transaction.set_amount(request.args.get('amount', type=float))
-  data = request.args.get('data') # any json data
-
-  if data != None:
-    transaction.set_data(json.loads(data))
-
-  transaction.set_gas_limit(request.args.get('gas_limit', type=float))
-  transaction.set_sender(request.args.get('sender', type=str))
-  sender_prev_transaction = blockchain.get_account_last_transaction(transaction.get_sender())
-  
-  if sender_prev_transaction:
-    transaction.set_nonce(sender_prev_transaction.get_nonce()+1)
-
-  transaction.set_recipient(request.args.get('recipient', type=str))
-  sender_private_key = request.args.get('private_key', type=str)
-  signature = Crypto.sign(transaction.get_body(), sender_private_key)
-  transaction.set_signature(signature)
-
-  transaction_hash = transaction.hash_transaction()
-
-  if (
-    not blockchain.verify_transaction_sender(sender_private_key, transaction)
-    or not blockchain.add_transaction_to_mempool(transaction_hash, transaction)
-  ):
-      return jsonify({'error': 'Invalid transaction'}), 400
-
-  return jsonify({'transaction_hash': transaction_hash}), 200
-
+  try:
+    transaction_data = {
+      'amount': request.args.get('amount', type=float),
+      'data': request.args.get('data', default=None),
+      'gas_limit': request.args.get('gas_limit', type=float),
+      'sender': request.args.get('sender', type=str),
+      'recipient': request.args.get('recipient', type=str),
+      'private_key': request.args.get('private_key', type=str)
+    }
+    transaction = blockchain.create_transaction(transaction_data)
+    return jsonify({'transaction_hash': transaction.get_hash()}), 200
+  except Exception as err:
+    return jsonify({'error': err.args[0]}), 400
 
 @app.route('/mine_block', methods = ['GET'])
 def mine_block():
