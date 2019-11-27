@@ -53,8 +53,9 @@ class Account:
     self.contract_code = code if security_clearance == True else ""
     if security_clearance:
       self.contract_hash = Helper.hash_data(self.contract_code.encode())
+
+    if security_clearance:
       self.generateFunctions(self.contract_code)
- 
     print(security_clearance)
     return security_clearance
 
@@ -91,7 +92,7 @@ class Account:
       disassemble = buffer.getvalue()
 
       # calculate the number of instructions
-      num_of_instructions =  len(disassemble.split('\n'))
+      num_of_instructions = len(disassemble.split('\n'))
 
       # Gas is equal to the number of instructions that need to be executed
       return num_of_instructions * GAS_PRICE
@@ -99,15 +100,17 @@ class Account:
     return 0
 
   def charge_gas(self, gas: float, func_name: str, func_args: tuple) -> bool:
-    # take gas needed to execute contract, return true if successful or false if not
-    if gas <= self.balance:
-      # Unwrap the function arguments from the tuple and pass them to the function
-      self.funcs[func_name](*func_args)
-      # Remove the balance for the gas cost
-      self.balance -= self.calc_gas(func_name)
-      # Return true indicating the function has been executed and gas has been charged
-      return True
-    # Return false if the gas has not been charged and function has not been executed
+    try:
+      if func_name in self.funcs:
+        # Unwrap the function arguments from the tuple and pass them to the function
+        if self.calc_gas(func_name) < gas:
+          self.funcs[func_name](*func_args)
+        # Return true indicating the function has been executed and gas has been charged
+        return True
+    except:
+      # Return false if the gas has not been charged and function has not been executed
+      return False
+    
     return False
 
   def modify_state(self, modified_state: dict):
