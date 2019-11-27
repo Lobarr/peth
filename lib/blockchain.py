@@ -174,8 +174,8 @@ class Blockchain:
       if not transaction_bucket:
         break
 
-      chosen_transaction: Transaction = self.choose_random_transaction(transaction_bucket)
-      sender_account: Account, recipient_account: Account = self.get_transaction_accounts(chosen_transaction)
+      chosen_transaction = self.choose_random_transaction(transaction_bucket)
+      sender_account, recipient_account = self.get_transaction_accounts(chosen_transaction)
       if sender_account.is_contract():
         # Retrieve the function name from the data
         func_name = chosen_transaction.get_data()['func_name']
