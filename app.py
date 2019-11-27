@@ -73,11 +73,18 @@ def get_blocks():
 @app.route('/get_block', methods = ['GET'])
 def get_block():
   try:
-    block_number = request.args.get('number', default=0, type=int)
+    block_number = request.args.get('height', default=0, type=int)
     return jsonify({'result': blockchain.chain[block_number]}), 200
   except IndexError:
     return jsonify({'error': 'invald block number'}), 400
 
+@app.route('/get_account', methods = ['GET'])
+def get_account():
+  account_address = request.args.get('address', type=str)
+  account = blockchain.get_account(account_address)
+  if account == None:
+    return jsonify({'error': 'Invalid address provided'})
+  return jsonify({'data': account.get_body()})
 
 @app.route('/show_balances', methods = ["GET"])
 def show_balances():
@@ -87,5 +94,6 @@ def show_balances():
 
 
 blockchain = Blockchain()
-app.run(host = '0.0.0.0', port = 8080, debug=1)
+if __name__ == '__main__':
+  app.run(host = '0.0.0.0', port = 8080, debug=1)
 

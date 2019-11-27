@@ -178,9 +178,11 @@ class Blockchain:
       sender_account, recipient_account = self.get_transaction_accounts(chosen_transaction)
       if recipient_account.is_contract():
         gas = recipient_account.calc_gas()
-        sender_account.charge_gas(gas) and recipient_account.exec_contract(chosen_transaction)
+        if sender_account.charge_gas(gas):
+          recipient_account.exec_contract(chosen_transaction)
+          self.update_accounts(sender_account)
+          chosen_transactions.append(chosen_transaction)
       else:
-        #! handle either sending data / sending funds
         if sender_account.withdraw(chosen_transaction.get_amount()): # attempt to spend
           recipient_account.deposit(chosen_transaction.get_amount())
           self.update_accounts(sender_account, recipient_account)
@@ -271,11 +273,11 @@ class Blockchain:
         account_addresses.add(transaction.get_recipient())
       block['header']['transactions_root_hash'] = self.calculate_transactions_root(transactions)
       
-      accounts = []
+      accounts: List[Account] = []
       for account_address in account_addresses:
         accounts.append(self.get_account(account_address))
       
-      if accounts:
+      if len(accounts) > 0:
         states_root, states_root_hash = self.get_patricia_root(accounts)
         block['states'] = states_root
         block['header']['states_root_hash'] = states_root_hash
@@ -314,10 +316,10 @@ class Blockchain:
     return self.accounts[address]
 
   def check(self):
-      for number in reversed(range(len(self.chain))):
-        block = self.chain[number]
+      for height in reversed(range(len(self.chain))):
+        block = self.chain[height]
         if (
-          (number > 0 and block['header']['parent_hash'] != self.chain[number-1]['hash'])
+          (height > 0 and block['header']['parent_hash'] != self.chain[height-1]['hash'])
           or block['hash'] != self.hash_block_header(block)
           or self.check_transactions_root(block) == False
         ):

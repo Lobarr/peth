@@ -56,7 +56,7 @@ class Account:
 
   def charge_gas(self, gas: float) -> bool:
     # take gas needed to execute contract, return true if successful or false if not
-    pass
+    return True
 
   def modify_state(self, modified_state: dict):
     self.state.update(modified_state)
