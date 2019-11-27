@@ -1,15 +1,17 @@
-import time
 import binascii
-import os
 import json
-from typing import List, Dict
+import os
+import time
 from random import randrange
+from typing import Dict, List
+
 from mpt import MerklePatriciaTrie
-from lib.wallet import Wallet
-from lib.transaction import Transaction
-from lib.helper import Helper
+
 from lib.account import Account
 from lib.crypto import Crypto
+from lib.helper import Helper
+from lib.transaction import Transaction
+from lib.wallet import Wallet
 
 # constants
 BLOCK_SIZE = 10
@@ -184,7 +186,11 @@ class Blockchain:
         # Check if they are the correct type
         if type(func_name) is str and type(func_args) is tuple:
           # Execute the function in the transaction
-          if sender_account.charge_gas(chosen_transaction.get_gas_limit, func_name, func_args):
+          charged_gas = sender_account.charge_gas(chosen_transaction.get_gas_limit(), func_name, func_args)
+          # Check if it charged the gas
+          if charged_gas:
+            # Remove from the balance if it charged the gas and update
+            sender_account.set_balance = sender_account.balance - sender_account.calc_gas(func_name)
             self.update_accounts(sender_account)
 
         chosen_transactions.append(chosen_transaction)
