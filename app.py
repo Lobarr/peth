@@ -86,6 +86,14 @@ def get_account():
     return jsonify({'error': 'Invalid address provided'})
   return jsonify({'data': account.get_body()})
 
+@app.route('/get_accounts', methods = ['GET'])
+def get_accounts():
+  if blockchain.get_accounts() == None:
+    return jsonify({'error': 'No accounts available'})
+
+  accounts = {address: account.get_body() for address, account in blockchain.get_accounts().items()}
+  return jsonify({'data': accounts})  
+
 @app.route('/show_balances', methods = ["GET"])
 def show_balances():
   return jsonify({
