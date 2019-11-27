@@ -174,14 +174,21 @@ class Blockchain:
       if not transaction_bucket:
         break
 
-      chosen_transaction = self.choose_random_transaction(transaction_bucket)
-      sender_account, recipient_account = self.get_transaction_accounts(chosen_transaction)
-      if recipient_account.is_contract():
-        gas = recipient_account.calc_gas()
-        if sender_account.charge_gas(gas):
-          recipient_account.exec_contract(chosen_transaction)
-          self.update_accounts(sender_account)
-          chosen_transactions.append(chosen_transaction)
+      chosen_transaction: Transaction = self.choose_random_transaction(transaction_bucket)
+      sender_account: Account, recipient_account: Account = self.get_transaction_accounts(chosen_transaction)
+      if sender_account.is_contract():
+        gas = sender_account.calc_gas()
+        # Retrieve the function name from the data
+        func_name = chosen_transaction.get_data()['func_name']
+        # Retreive the function arguments from the data
+        func_args = chosen_transaction.get_data()['func_args']
+        # Check if they are the correct type
+        if type(func_name) is str and type(func_args) is tuple:
+          # Execute the function in the transaction
+          if sender_account.charge_gas(chosen_transaction.get_gas_limit, func_name, func_args):
+            self.update_accounts(sender_account)
+
+        chosen_transactions.append(chosen_transaction)
       else:
         if sender_account.withdraw(chosen_transaction.get_amount()): # attempt to spend
           recipient_account.deposit(chosen_transaction.get_amount())
