@@ -7,7 +7,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.kdf import x963kdf
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from .bytes import Bytes
+from lib.helper import Helper
 
 class Crypto:
   @staticmethod
@@ -23,12 +23,12 @@ class Crypto:
       encoding=serialization.Encoding.PEM,
       format=serialization.PrivateFormat.TraditionalOpenSSL,
       encryption_algorithm=serialization.NoEncryption()
-    ).decode('utf-8')
+    ).hex()
     public_key = private_key.public_key()
     serialized_public_key = public_key.public_bytes(
       encoding=serialization.Encoding.PEM,
       format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
+    ).hex()
 
     return (serialized_private_key, serialized_public_key)
 
@@ -40,11 +40,11 @@ class Crypto:
     @param private_key: (str) private key to sign with
     """
     private_key_bytes = serialization.load_pem_private_key(
-      private_key.encode('utf-8'),
+      bytes.fromhex(private_key),
       password=None,
       backend=default_backend()
     )
-    data_bytes = Bytes.object_to_bytes(data)
+    data_bytes = Helper.object_to_bytes(data)
     signature = private_key_bytes.sign(data_bytes, ec.ECDSA(hashes.SHA256()))
     return signature.hex()
 
@@ -58,11 +58,11 @@ class Crypto:
     """
     try:
       public_key_bytes = serialization.load_pem_public_key(
-        public_key.encode('utf-8'),
+        bytes.fromhex(public_key),
         backend=default_backend()
       )
       signature_bytes = bytes.fromhex(signature)
-      data_bytes = Bytes.object_to_bytes(data)
+      data_bytes = Helper.object_to_bytes(data)
       public_key_bytes.verify(signature_bytes, data_bytes, ec.ECDSA(hashes.SHA256()))
       return True
     except InvalidSignature:

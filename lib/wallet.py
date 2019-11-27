@@ -1,14 +1,14 @@
 import binascii
 import os
 from .account import Account
-
-WALLET_KEY_SIZE = 8
+from .crypto import Crypto
 
 class Wallet:
   def __init__(self, address: str = None):
-    self.public_key: str = binascii.b2a_hex(os.urandom(WALLET_KEY_SIZE)).decode('utf-8')
-    self.private_key: str = binascii.b2a_hex(os.urandom(WALLET_KEY_SIZE)).decode('utf-8')
+    private_key, public_key = Crypto.generate_key_pair()
     self.address = str = address
+    self.private_key: str = private_key
+    self.public_key: str = public_key
 
   def get_public_key(self):
     return self.public_key
@@ -33,9 +33,9 @@ class Wallet:
 
   def get_summary(self, account: Account) -> dict:
     return {
-      'public_key': self.get_public_key(),
       'address': self.get_address(),
-      'balance': account.get_balance()
+      'public_key': self.get_public_key(),
+      'balance': account.get_balance(),
     }
 
 
