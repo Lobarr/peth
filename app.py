@@ -1,8 +1,3 @@
-'''
-Jesuloba Egunjobi (100613629)
-Nicolas Bermeo (100625305)
-'''
-
 import json
 from random import randrange
 from flask import Flask, jsonify, request, json, Response
