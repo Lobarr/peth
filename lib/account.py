@@ -12,8 +12,8 @@ GAS_PRICE = 1/1000
 
 class Account:
 
-  def __init__(self, address: str = Helper.generate_address(), balance: float = DEFAULT_BALANCE, contract_code: str = "", contract_hash: str = None, state: dict = {}):
-    self.address: str = address
+  def __init__(self, address: str = '', balance: float = DEFAULT_BALANCE, contract_code: str = "", contract_hash: str = None, state: dict = {}):
+    self.address: str = address if address else Helper.generate_address()
     self.balance: float = balance
     self.contract_code: str = contract_code
     self.contract_hash: str = contract_hash
@@ -47,7 +47,7 @@ class Account:
 
     # Decode the contract code 
     code = base64.urlsafe_b64decode(contract_code).decode('utf-8')
-    security_clearance = self.is_contract_clean()
+    security_clearance = self.is_contract_clean(code)
     if not security_clearance:
       return False
 
