@@ -237,7 +237,7 @@ class Blockchain:
       transaction_data = block['transactions'][transaction_id]
       transaction = Transaction.make_transaction(transaction_data)
       transactions.append(transaction)
-    return True if self.calculate_transactions_root(transactions) == block['header']['transactions_root'] else False
+    return True if self.calculate_transactions_root(transactions) == block['header']['transactions_root_hash'] else False
 
   def create_block(self, data = None):
       block = {
