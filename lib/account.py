@@ -1,8 +1,14 @@
+from dis import dis
+from contextlib import redirect_stdout
 from copy import deepcopy
+from io import StringIO
+
 from .helper import Helper
 from .transaction import Transaction
 
 DEFAULT_BALANCE = 10.0
+GAS_PRICE = 1/1000
+
 class Account:
 
   def __init__(self, address: str = Helper.generate_address(), balance: float = DEFAULT_BALANCE, contract_code: str = None, contract_hash: str = None, state: dict = {}):
@@ -11,6 +17,14 @@ class Account:
     self.contract_code: str = contract_code
     self.contract_hash: str = contract_hash
     self.state: dict = state
+
+    # Funcs will the actual funcs that can be called
+    # ex. self.funcs['myfunction'](<parameters>)
+    self.funcs = {}
+    # Funcs args are a list a arguments that stored for a given function,
+    # parameters names are stored as str in a tuple
+    # ex. self.funcs_args['myfunction'] -> will return (<parameter1_name>, <parameter2_name>)
+    self.funcs_args = {}
 
   def set_address(self, address: str):
     self.address = address
@@ -25,9 +39,21 @@ class Account:
   def get_balance(self) -> float:
     return self.balance
 
-  def set_contract_code(self, contract_code: str):
-    self.contract_code = contract_code
-    self.contract_hash = Helper.hash_data(contract_code.encode('utf-8'))
+  def set_contract_code(self, contract_code: str) -> bool:
+    # Compiled(co) contract code 
+    # Will only be set it there passes all validation
+    # Returns true if set otherwise false
+
+    # Security check to ensure code is clean
+    security_clearance: bool = True if self.is_contract_clean(contract_code) else False
+
+    self.contract_code = contract_code if security_clearance == True else ""
+    self.contract_hash = Helper.hash_data(self.contract_code.encode('utf-8'))
+
+    if security_clearance:
+      self.generateFunctions(self.contract_code)
+
+    return security_clearance
 
   def get_contract_code(self) -> str:
     return self.contract_code
@@ -50,13 +76,36 @@ class Account:
       return True
     return False
 
-  def calc_gas(self) -> float:
-    # returns gas required to execute contract
-    pass
+  def calc_gas(self, func_name: str) -> float:
+    # calculates the gas cost
+    if func_name in self.funcs:
+      # Redirect the disassemble to a buffer
+      buffer = StringIO()
+      with redirect_stdout(buffer):
+        dis(self.funcs[func_name])
+      
+      # Get the value of disassemble
+      disassemble = buffer.getvalue()
 
-  def charge_gas(self, gas: float) -> bool:
+      # calculate the number of instructions
+      num_of_instructions =  len(disassemble.split('\n'))
+
+      # Gas is equal to the number of instructions that need to be executed
+      return num_of_instructions * GAS_PRICE
+
+    return 0
+
+  def charge_gas(self, gas: float, func_name: str, func_args: tuple) -> bool:
     # take gas needed to execute contract, return true if successful or false if not
-    return True
+    if gas <= self.balance:
+      # Unwrap the function arguments from the tuple and pass them to the function
+      self.funcs[func_name](*func_args)
+      # Remove the balance for the gas cost
+      self.balance -= self.calc_gas(func_name)
+      # Return true indicating the function has been executed and gas has been charged
+      return True
+    # Return false if the gas has not been charged and function has not been executed
+    return False
 
   def modify_state(self, modified_state: dict):
     self.state.update(modified_state)
@@ -89,5 +138,94 @@ class Account:
       contract_hash=account_data['contract_hash'],
       state=account_data['state']
     )
+  
+  def is_contract_clean(self, contract_code: str) -> bool:
+    # Compile and disassemble the contract code
+    co_contract_code = compile(contract_code, self.get_address(), 'exec')
+    dis(co_contract_code, file=open('temp_disassemble', 'w'))
+    
+    disassembly = open('temp_disassemble', 'r').read().split()
+
+    # Blacklisted opcodes
+    blacklist = [
+      'IMPORT_NAME', 
+      '(exec)',
+      '(eval)',
+      '(compile)',
+      '(open)',
+      '(balance)',
+      '(__class__)',
+      '(__delattr__)',
+      '(__dict__)',
+      '(__dir__)',
+      '(__doc__)',
+      '(__eq__)',
+      '(__format__)',
+      '(__ge__)',
+      '(__getattribute__)',
+      '(__gt__)',
+      '(__hash__)',
+      '(__init__)',
+      '(__init_subclass__)',
+      '(__le__)',
+      '(__lt__)',
+      '(__module__)',
+      '(__ne__)',
+      '(__new__)',
+      '(__reduce__)',
+      '(__reduce_ex__)',
+      '(__repr__)',
+      '(__setattr__)',
+      '(__sizeof__)',
+      '(__str__)',
+      '(__subclasshook__)',
+      '(__weakref__)',
+      '(calc_gas)',
+      '(charge_gas)',
+      '(deposit)',
+      '(exec_contract)',
+      '(generateFunctions)',
+      '(get_address)',
+      '(get_balance)',
+      '(get_body)',
+      '(get_contract_code)',
+      '(get_state)',
+      '(is_contract)',
+      '(is_contract_clean)',
+      '(make_account)',
+      '(modify_state)',
+      '(set_address)',
+      '(set_balance)',
+      '(set_contract_code)',
+      '(set_state)',
+      '(withdraw)',
+      '(balance)',
+      '(contract_code)',
+      '(contract_hash)',
+      '(funcs)',
+      '(funcs_args)']
+
+    # Return false if there are any blacklisted opcodes
+    if any(check in disassembly for check in blacklist):
+      return False
+
+    return True
+  
+  def generateFunctions(self, contract_code: str) -> bool:
+    co_contract_code = compile(contract_code, 'temp_compile', 'exec')
+    # Extracts the functions by checking their type after compilation
+    # functions will have code object type instead of a string
+    # Initializes the contract with the functions
+    injected_context = {
+        'state': {},
+        'data': {}
+    }
+    exec(co_contract_code, injected_context)
+
+    # The functions themselves can be extracted from the injected_context
+    _extracted_funcs = [constant for constant in co_contract_code.co_consts if type(constant) == type(compile('', '', 'exec'))]
+    self.funcs = {str(func.co_name): injected_context[str(func.co_name)] for func in _extracted_funcs}
+    # Generates the arguments
+    self.funcs_args = {func_name: func.__code__.co_varnames for (func_name,func) in self.funcs.items()}
 
 
