@@ -4,11 +4,70 @@ from copy import deepcopy
 from dis import dis
 from io import StringIO
 
-from .helper import Helper
+from .helper import Helper, GAS_PRICE
 from .transaction import Transaction
 
 DEFAULT_BALANCE = 10.0
-GAS_PRICE = 0.001
+
+# Blacklisted opcodes
+BLACKLISTS = [
+  'IMPORT_NAME', 
+  '(exec)',
+  '(eval)',
+  '(compile)',
+  '(open)',
+  '(balance)',
+  '(__class__)',
+  '(__delattr__)',
+  '(__dict__)',
+  '(__dir__)',
+  '(__doc__)',
+  '(__eq__)',
+  '(__format__)',
+  '(__ge__)',
+  '(__getattribute__)',
+  '(__gt__)',
+  '(__hash__)',
+  '(__init__)',
+  '(__init_subclass__)',
+  '(__le__)',
+  '(__lt__)',
+  '(__module__)',
+  '(__ne__)',
+  '(__new__)',
+  '(__reduce__)',
+  '(__reduce_ex__)',
+  '(__repr__)',
+  '(__setattr__)',
+  '(__sizeof__)',
+  '(__str__)',
+  '(__subclasshook__)',
+  '(__weakref__)',
+  '(calc_gas)',
+  '(charge_gas)',
+  '(deposit)',
+  '(exec_contract)',
+  '(generate_functions)',
+  '(get_address)',
+  '(get_balance)',
+  '(get_body)',
+  '(get_contract_code)',
+  '(get_state)',
+  '(is_contract)',
+  '(is_contract_clean)',
+  '(make_account)',
+  '(modify_state)',
+  '(set_address)',
+  '(set_balance)',
+  '(set_contract_code)',
+  '(set_state)',
+  '(withdraw)',
+  '(balance)',
+  '(contract_code)',
+  '(contract_hash)',
+  '(funcs)',
+  '(funcs_args)'
+]
 
 class Account:
 
@@ -33,7 +92,6 @@ class Account:
 
   def get_address(self) -> str:
     return self.address
-
 
   def set_balance(self, balance: float):
     self.balance = balance
@@ -99,38 +157,24 @@ class Account:
 
     return 0
 
-  def charge_gas(self, gas: float, func_name: str, func_args: tuple) -> bool:
+  def exec_contract(self, transaction: Transaction) -> bool:
     try:
-      if func_name in self.funcs:
-        # Unwrap the function arguments from the tuple and pass them to the function
-        if self.calc_gas(func_name) < gas:
-          self.funcs[func_name](*func_args)
-        # Return true indicating the function has been executed and gas has been charged
+      func_name = transaction.get_data()['func_name']
+      func_args = tuple(transaction.get_data()['func_args'])
+      if (
+        type(func_name) is str
+        and type(func_args) is tuple
+        and func_name in self.funcs
+        and self.calc_gas(func_name) < transaction.get_gas_limit()
+      ):
+        self.funcs[func_name](*func_args)
         return True
-    except:
-      # Return false if the gas has not been charged and function has not been executed
       return False
-    
-    return False
+    except:
+      return False
 
   def modify_state(self, modified_state: dict):
     self.state.update(modified_state)
-
-  def exec_contract(self, transaction: Transaction):
-    #! contracts can access and modify state, transaction data field and msg object by declaring globally
-    new_state = deepcopy(self.get_state())
-    if self.is_contract():
-      compiled_contract = compile(self.get_contract_code(), self.get_address(), 'exec')
-      injected_context = {
-        'state': new_state,
-        'data': transaction.get_data(),
-        'msg': {
-          'sender': transaction.get_sender(),
-          'nonce': transaction.get_nonce()
-        }
-      }
-      exec(compiled_contract, injected_context)
-      self.modify_state(new_state)
 
   def get_body(self) -> dict:
     # Remove functions for export
@@ -152,73 +196,9 @@ class Account:
     # Compile and disassemble the contract code
     co_contract_code = compile(contract_code, self.get_address(), 'exec')
     dis(co_contract_code, file=open('temp_disassemble', 'w'))
-    
     disassembly = open('temp_disassemble', 'r').read().split()
-
-    # Blacklisted opcodes
-    blacklist = [
-      'IMPORT_NAME', 
-      '(exec)',
-      '(eval)',
-      '(compile)',
-      '(open)',
-      '(balance)',
-      '(__class__)',
-      '(__delattr__)',
-      '(__dict__)',
-      '(__dir__)',
-      '(__doc__)',
-      '(__eq__)',
-      '(__format__)',
-      '(__ge__)',
-      '(__getattribute__)',
-      '(__gt__)',
-      '(__hash__)',
-      '(__init__)',
-      '(__init_subclass__)',
-      '(__le__)',
-      '(__lt__)',
-      '(__module__)',
-      '(__ne__)',
-      '(__new__)',
-      '(__reduce__)',
-      '(__reduce_ex__)',
-      '(__repr__)',
-      '(__setattr__)',
-      '(__sizeof__)',
-      '(__str__)',
-      '(__subclasshook__)',
-      '(__weakref__)',
-      '(calc_gas)',
-      '(charge_gas)',
-      '(deposit)',
-      '(exec_contract)',
-      '(generate_functions)',
-      '(get_address)',
-      '(get_balance)',
-      '(get_body)',
-      '(get_contract_code)',
-      '(get_state)',
-      '(is_contract)',
-      '(is_contract_clean)',
-      '(make_account)',
-      '(modify_state)',
-      '(set_address)',
-      '(set_balance)',
-      '(set_contract_code)',
-      '(set_state)',
-      '(withdraw)',
-      '(balance)',
-      '(contract_code)',
-      '(contract_hash)',
-      '(funcs)',
-      '(funcs_args)'
-      ]
-
-    # Return false if there are any blacklisted opcodes
-    if any(check in disassembly for check in blacklist):
+    if any(check in disassembly for check in BLACKLISTS):
       return False
-
     return True
   
   def generate_functions(self, contract_code: str) -> bool:

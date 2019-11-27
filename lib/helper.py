@@ -4,6 +4,7 @@ import json
 import os
 from uuid import uuid4
 
+GAS_PRICE = 0.001
 
 class Helper:
   @staticmethod
