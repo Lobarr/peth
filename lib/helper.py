@@ -22,5 +22,5 @@ class Helper:
     return json.dumps(obj).encode('utf-8')
 
   @staticmethod
-  def bytes_to_object(self, data: bytes) -> dict:
+  def bytes_to_object(data: bytes) -> dict:
     return json.load(data.decode('utf-8'))

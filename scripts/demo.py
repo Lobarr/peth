@@ -9,7 +9,7 @@ def encode_contract(contract_path: str) -> str:
     return base64.urlsafe_b64encode(contract).decode('utf-8')
   return ''
 
-api = 'http://localhost:5000'
+api = 'http://localhost:8080'
 
 sender_account = requests.get(f'{api}/create_account').json()['data']
 sender_wallet = requests.get(f"{api}/create_wallet?address={sender_account['address']}").json()['data']
