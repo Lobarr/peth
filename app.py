@@ -74,6 +74,34 @@ def create_account():
     'data': blockchain.create_account(request.args.get('code', type=str))
   }), 200
 
+"""
+@api {get} /show_mempool Gets transactions in the mempool
+@apiName ShowMempool
+@apiGroup Blockchain
+
+@apiSuccessExample {json} Response-Example:
+  HTTP/1.1 200 OK
+  {
+    "data": [
+      {
+        "amount": 5.0,
+        "data": {
+          "func_args": [
+            "bob"
+          ],
+          "func_name": "addStudent"
+        },
+        "gas_limit": 2.0,
+        "gas_price": 0.001,
+        "hash": "some-hash",
+        "nonce": 0,
+        "recipient": "some-address",
+        "sender": "some-address",
+        "signature": "some-signature"
+      }
+    ]
+  }
+"""
 @app.route('/show_mempool', methods = ['GET'])
 def show_mempool():
   return jsonify({
@@ -83,7 +111,7 @@ def show_mempool():
 
 """
 @api {get} /create_transaction Create transaction on the blockchain
-@apiName CreateAccount
+@apiName CreateTransaction
 @apiGroup Blockchain
 
 @apiParamExample {json} Request-Example:
@@ -238,7 +266,7 @@ def get_blocks():
 
 """
 @api {get} /get_block Gets block in the blockchain 
-@apiName GetBlocks
+@apiName GetBlock
 @apiGroup Blockchain
 
 @apiParamExample {json} Request-Example:
@@ -409,7 +437,7 @@ def get_accounts():
 
 """
 @api {get} /show_balances Gets summary of wallets in the blockchain 
-@apiName GetAccounts
+@apiName ShowBalances
 @apiGroup Blockchain
 
 @apiSuccessExample {json} Response-Example:
